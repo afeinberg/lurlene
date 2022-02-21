@@ -1,4 +1,4 @@
-use lurlene::Index; 
+use lurlene::Index;
 
 fn main() {
     let mut index = Index::new();
