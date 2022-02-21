@@ -10,15 +10,17 @@ pub struct Index {
     index: IndexMap,
 }
 
-impl Index {
-    pub fn new() -> Self {
+impl Default for Index {
+    fn default() -> Self {
         Index {
             count: 0,
             docs: Documents::new(),
             index: IndexMap::new(),
         }
     }
+}
 
+impl Index {
     pub fn add(&mut self, name: &str, content: &str) {
         self.count += 1;
         self.docs.insert(self.count, name.to_string());
@@ -27,7 +29,7 @@ impl Index {
             match self.index.get_mut(&word) {
                 Some(entry) => {
                     match entry.get_mut(&self.count) {
-                        Some(n) => *n = *n + 1,
+                        Some(n) => *n += 1,
                         None => {
                             entry.insert(self.count, 1);
                         }
@@ -47,7 +49,7 @@ impl Index {
         match self.index.get(&key) {
             Some(freq_list) => {
                 // collect doc ids from frequency list
-                let mut doc_ids: Vec<u32> = freq_list.keys().map(|doc_id| *doc_id).collect();
+                let mut doc_ids: Vec<u32> = freq_list.keys().copied().collect();
 
                 doc_ids.sort_by(|doc_a_id, doc_b_id| {
                     // sort doc ids by frequency
@@ -61,8 +63,8 @@ impl Index {
                     .iter()
                     .map(|doc_id| {
                         (
-                            self.docs.get(&doc_id).unwrap().clone(),
-                            *freq_list.get(&doc_id).unwrap(),
+                            self.docs.get(doc_id).unwrap().clone(),
+                            *freq_list.get(doc_id).unwrap(),
                         )
                     })
                     .collect();
