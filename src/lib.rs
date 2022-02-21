@@ -1,9 +1,13 @@
+use log::debug;
+use serde::{Deserialize, Serialize};
 use std::collections;
+use std::convert::TryFrom;
+use std::error;
 
 type Documents = collections::BTreeMap<u32, String>;
 type IndexMap = collections::BTreeMap<String, collections::BTreeMap<u32, u32>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Index {
     count: u32,
     docs: Documents,
@@ -17,6 +21,16 @@ impl Default for Index {
             docs: Documents::new(),
             index: IndexMap::new(),
         }
+    }
+}
+
+impl TryFrom<&str> for Index {
+    type Error = Box<dyn error::Error>;
+
+    fn try_from(json_text: &str) -> Result<Self, Self::Error> {
+        let res = serde_json::from_str::<Self>(json_text)?;
+        debug!("{:?}", res);
+        Ok(res)
     }
 }
 
@@ -36,7 +50,7 @@ impl Index {
                     };
                 }
                 None => {
-                    let mut v = std::collections::BTreeMap::new();
+                    let mut v = collections::BTreeMap::new();
                     v.insert(self.count, 1);
                     self.index.insert(word, v);
                 }
@@ -72,5 +86,45 @@ impl Index {
             }
             None => vec![],
         }
+    }
+
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    fn sample_index() -> Index {
+        let mut index = Index::default();
+        index.add("foo", "i love emacs");
+        index.add("bar", "all love emacs");
+        index
+    }
+
+    #[test]
+    fn test_search_and_add() {
+        let index = sample_index();
+
+        for key in ["emacs", "love"] {
+            assert_eq!(
+                index.search(key),
+                vec![(String::from("foo"), 1u32), (String::from("bar"), 1u32)]
+            );
+        }
+        for key in ["i", "all"] {
+            assert_eq!(index.search(key).len(), 1);
+        }
+    }
+
+    #[test]
+    fn test_serde() {
+        let index = sample_index();
+        let index_json = index.serialize();
+        let index_from_json = Index::try_from(index_json.as_str()).unwrap();
+        assert_eq!(index, index_from_json);
     }
 }
